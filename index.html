@@ -244,6 +244,21 @@
     .migrate-text { font-size:13px; line-height:1.5; }
     .migrate-actions { display:flex; gap:8px; flex-shrink:0; }
     .ledger-count { margin-top:10px; color:var(--muted); font-size:13px; }
+    .balance-entry {
+      display:grid;
+      grid-template-columns:82px 1fr;
+      gap:8px;
+      align-items:end;
+    }
+    .sign-btn {
+      min-height:44px;
+      padding:0 10px;
+      white-space:nowrap;
+    }
+    .sign-btn.negative {
+      background:var(--danger-soft);
+      color:var(--danger);
+    }
     .toast {
       position:fixed;
       left:50%;
@@ -388,6 +403,11 @@
             <button class="primary" id="toggleLedgerBtn">添加账本</button>
           </div>
 
+          <div class="summary" style="margin-top:0">
+            <span>所有账本总金额</span>
+            <strong id="ledgerTotal">¥0.00</strong>
+          </div>
+
           <div class="panel" id="ledgerAddPanel">
             <div class="section-title">添加新账本</div>
             <div class="row ledger">
@@ -397,7 +417,10 @@
               </div>
               <div>
                 <label for="ledgerBalance">余额</label>
-                <input id="ledgerBalance" type="number" inputmode="decimal" step="0.01" placeholder="例如：3200.00" />
+                <div class="balance-entry">
+                  <button type="button" class="secondary sign-btn" id="ledgerSignBtn">正数</button>
+                  <input id="ledgerBalance" type="number" inputmode="decimal" min="0" step="0.01" placeholder="例如：3200.00" />
+                </div>
               </div>
               <button class="primary" id="addLedgerBtn">确认添加</button>
             </div>
@@ -427,6 +450,7 @@
     let currentUser = null;
     let expenses = [];
     let ledgers = [];
+    let ledgerSign = 1;
     let syncTimer = null;
 
     const $ = id => document.getElementById(id);
@@ -439,7 +463,8 @@
     }
 
     function money(value) {
-      return "¥" + Number(value || 0).toFixed(2);
+      const n = Number(value || 0);
+      return n < 0 ? "-¥" + Math.abs(n).toFixed(2) : "¥" + n.toFixed(2);
     }
 
     function escapeHtml(text) {
@@ -575,7 +600,10 @@
     }
 
     function renderLedgers() {
+      const total = ledgers.reduce((sum, l) => sum + Number(l.balance || 0), 0);
+      $("ledgerTotal").textContent = money(total);
       $("ledgerCount").textContent = `共 ${ledgers.length} 个账本`;
+
       $("ledgerList").innerHTML = ledgers.length ? ledgers.map(l => `
         <div class="item">
           <div class="meta">
@@ -622,10 +650,11 @@
     async function addLedger() {
       const name = $("ledgerName").value.trim();
       const balanceText = $("ledgerBalance").value.trim();
-      const balance = Number(balanceText);
+      const rawBalance = Number(balanceText);
+      const balance = ledgerSign * Math.abs(rawBalance);
 
       if (!name) return toast("请输入账本名称");
-      if (balanceText === "" || !Number.isFinite(balance)) return toast("请输入正确的余额");
+      if (balanceText === "" || !Number.isFinite(rawBalance)) return toast("请输入正确的余额");
 
       setSyncStatus("busy", "保存中…");
       const { error } = await sb.from("ledgers").insert({
@@ -642,6 +671,9 @@
 
       $("ledgerName").value = "";
       $("ledgerBalance").value = "";
+      ledgerSign = 1;
+      $("ledgerSignBtn").textContent = "正数";
+      $("ledgerSignBtn").classList.remove("negative");
       $("ledgerAddPanel").classList.remove("open");
       $("toggleLedgerBtn").textContent = "添加账本";
       await refreshAll(true);
@@ -778,6 +810,13 @@
 
     $("addExpenseBtn").addEventListener("click", addExpense);
     $("addLedgerBtn").addEventListener("click", addLedger);
+
+    $("ledgerSignBtn").addEventListener("click", () => {
+      ledgerSign *= -1;
+      const negative = ledgerSign < 0;
+      $("ledgerSignBtn").textContent = negative ? "负数" : "正数";
+      $("ledgerSignBtn").classList.toggle("negative", negative);
+    });
 
     $("toggleQueryBtn").addEventListener("click", () => {
       const panel = $("queryPanel");
