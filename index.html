@@ -2,427 +2,835 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f6f7fb" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>简易记账</title>
   <style>
-    :root{
+    :root {
       --bg:#f6f7fb;
-      --card:#ffffff;
+      --card:#fff;
       --text:#1f2937;
       --muted:#6b7280;
       --line:#e5e7eb;
       --primary:#2563eb;
+      --primary-soft:#eff6ff;
       --danger:#dc2626;
+      --danger-soft:#fee2e2;
+      --success:#059669;
+      --success-soft:#ecfdf5;
+      --warning:#b45309;
+      --warning-soft:#fffbeb;
       --shadow:0 8px 24px rgba(0,0,0,.06);
       --radius:16px;
     }
-    *{box-sizing:border-box}
-    body{
+    * { box-sizing:border-box; }
+    body {
       margin:0;
       font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
       background:var(--bg);
       color:var(--text);
+      -webkit-tap-highlight-color:transparent;
     }
-    .wrap{
+    button,input { font:inherit; }
+    button { cursor:pointer; }
+    .hidden { display:none !important; }
+    .wrap {
       max-width:1100px;
       margin:0 auto;
-      padding:28px 18px 50px;
+      padding:18px 14px calc(36px + env(safe-area-inset-bottom));
     }
-    h1{
-      margin:0 0 22px;
-      font-size:30px;
+    .topbar {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:16px;
     }
-    .grid{
+    h1 { margin:0; font-size:27px; }
+    .status-wrap {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .status {
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      font-size:13px;
+      color:var(--muted);
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:7px 10px;
+    }
+    .dot {
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background:#9ca3af;
+    }
+    .dot.ok { background:var(--success); }
+    .dot.busy { background:#f59e0b; }
+    .grid {
       display:grid;
       grid-template-columns:1fr 1fr;
-      gap:20px;
+      gap:18px;
     }
-    .card{
+    .card {
       background:var(--card);
       border:1px solid var(--line);
       border-radius:var(--radius);
       box-shadow:var(--shadow);
-      padding:20px;
+      padding:18px;
     }
-    .card h2{
-      margin:0 0 16px;
-      font-size:22px;
+    .card-header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:16px;
     }
-    .row{
+    .card h2 { margin:0; font-size:21px; }
+    .row {
       display:grid;
-      grid-template-columns:1fr 1fr auto;
+      grid-template-columns:1.2fr 1fr 1fr auto;
       gap:10px;
       align-items:end;
     }
-    .row.two{
-      grid-template-columns:1fr 1fr;
-    }
-    label{
+    .row.two { grid-template-columns:1fr 1fr; }
+    .row.ledger { grid-template-columns:1.2fr 1fr auto; }
+    label {
       display:block;
       font-size:13px;
       color:var(--muted);
       margin-bottom:6px;
     }
-    input{
+    input {
       width:100%;
-      height:42px;
+      min-height:44px;
       border:1px solid var(--line);
-      border-radius:10px;
+      border-radius:11px;
       padding:0 12px;
-      font-size:15px;
+      font-size:16px;
       outline:none;
       background:#fff;
+      color:var(--text);
     }
-    input:focus{
+    input:focus {
       border-color:var(--primary);
       box-shadow:0 0 0 3px rgba(37,99,235,.10);
     }
-    button{
-      height:42px;
+    button {
+      min-height:42px;
       border:0;
-      border-radius:10px;
-      padding:0 16px;
-      cursor:pointer;
+      border-radius:11px;
+      padding:0 15px;
       font-size:14px;
-      font-weight:600;
+      font-weight:650;
     }
-    .primary{
-      background:var(--primary);
-      color:#fff;
-    }
-    .ghost{
-      background:#eef2ff;
-      color:#3730a3;
-    }
-    .danger{
-      background:#fee2e2;
-      color:var(--danger);
-      height:34px;
-      padding:0 12px;
-    }
-    .section{
+    .primary { background:var(--primary); color:#fff; }
+    .secondary { background:var(--primary-soft); color:var(--primary); }
+    .plain { background:#fff; color:var(--text); border:1px solid var(--line); }
+    .danger { background:var(--danger-soft); color:var(--danger); min-height:34px; padding:0 11px; }
+    .section {
       margin-top:18px;
-      padding-top:18px;
+      padding-top:16px;
       border-top:1px solid var(--line);
     }
-    .summary{
+    .section-title {
+      font-size:15px;
+      font-weight:700;
+      margin-bottom:10px;
+    }
+    .summary {
       display:flex;
       justify-content:space-between;
       align-items:center;
+      gap:12px;
       background:#f8fafc;
       border:1px solid var(--line);
       border-radius:12px;
-      padding:14px 16px;
+      padding:13px 15px;
       margin-top:12px;
     }
-    .summary strong{
-      font-size:24px;
-    }
-    .list{
-      margin-top:14px;
+    .summary strong { font-size:22px; white-space:nowrap; }
+    .list {
+      margin-top:12px;
       display:flex;
       flex-direction:column;
-      gap:10px;
+      gap:9px;
       max-height:430px;
       overflow:auto;
     }
-    .item{
+    .item {
       display:flex;
       align-items:center;
-      justify-content:space-between;
-      gap:12px;
+      gap:10px;
       border:1px solid var(--line);
       border-radius:12px;
-      padding:12px 14px;
+      padding:11px 12px;
       background:#fff;
     }
-    .meta{
-      min-width:0;
-    }
-    .name{
+    .meta { min-width:0; flex:1; }
+    .name {
       font-weight:700;
       overflow:hidden;
       text-overflow:ellipsis;
       white-space:nowrap;
     }
-    .sub{
-      margin-top:4px;
-      color:var(--muted);
-      font-size:13px;
-    }
-    .amount{
-      font-weight:800;
-      white-space:nowrap;
-      margin-left:auto;
-    }
-    .empty{
+    .sub { margin-top:3px; color:var(--muted); font-size:12px; }
+    .amount { font-weight:800; white-space:nowrap; }
+    .empty {
       color:var(--muted);
       text-align:center;
-      padding:24px 0;
+      padding:22px 0;
+      font-size:14px;
     }
-    .hint{
-      color:var(--muted);
+    .panel {
+      display:none;
+      margin-top:14px;
+      padding:14px;
+      border:1px solid var(--line);
+      border-radius:13px;
+      background:#fafafa;
+    }
+    .panel.open { display:block; }
+    .auth-shell {
+      max-width:430px;
+      margin:56px auto 0;
+    }
+    .auth-card {
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      padding:22px;
+    }
+    .auth-title { margin:0 0 6px; font-size:24px; }
+    .auth-sub { color:var(--muted); font-size:14px; line-height:1.55; margin-bottom:18px; }
+    .auth-field { margin-bottom:12px; }
+    .auth-actions {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:14px;
+    }
+    .msg {
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius:10px;
       font-size:13px;
-      margin-top:8px;
       line-height:1.5;
     }
-    .ledger-total{
-      margin-top:12px;
-      font-size:13px;
-      color:var(--muted);
+    .msg.err { background:var(--danger-soft); color:#991b1b; }
+    .msg.ok { background:var(--success-soft); color:#065f46; }
+    .migrate {
+      max-width:1100px;
+      margin:0 auto 14px;
+      background:var(--warning-soft);
+      border:1px solid #fde68a;
+      color:#78350f;
+      border-radius:14px;
+      padding:13px 14px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
     }
-    @media(max-width:800px){
-      .grid{grid-template-columns:1fr}
-      .row{grid-template-columns:1fr}
-      .row.two{grid-template-columns:1fr}
+    .migrate-text { font-size:13px; line-height:1.5; }
+    .migrate-actions { display:flex; gap:8px; flex-shrink:0; }
+    .ledger-count { margin-top:10px; color:var(--muted); font-size:13px; }
+    .toast {
+      position:fixed;
+      left:50%;
+      bottom:calc(20px + env(safe-area-inset-bottom));
+      transform:translateX(-50%);
+      background:#111827;
+      color:#fff;
+      border-radius:999px;
+      padding:10px 14px;
+      font-size:13px;
+      z-index:9999;
+      opacity:0;
+      pointer-events:none;
+      transition:.2s;
+      max-width:88vw;
+      text-align:center;
+    }
+    .toast.show { opacity:1; }
+    @media(max-width:850px) {
+      .grid { grid-template-columns:1fr; }
+    }
+    @media(max-width:620px) {
+      .wrap { padding:14px 11px calc(28px + env(safe-area-inset-bottom)); }
+      h1 { font-size:24px; }
+      .topbar { align-items:flex-start; }
+      .card { padding:15px; }
+      .row,.row.two,.row.ledger { grid-template-columns:1fr; }
+      .card-header { align-items:flex-start; }
+      .item { align-items:center; }
+      .amount { margin-left:auto; }
+      .migrate {
+        margin:0 11px 12px;
+        flex-direction:column;
+        align-items:stretch;
+      }
+      .migrate-actions { width:100%; }
+      .migrate-actions button { flex:1; }
+      .status-wrap { gap:6px; }
+      .status { font-size:12px; }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>简易记账</h1>
+  <div id="authView" class="auth-shell">
+    <div class="auth-card">
+      <h1 class="auth-title">我的记账</h1>
+      <div class="auth-sub">登录后数据会保存到云端。你在 iPhone、电脑或其他设备上使用同一个账号登录，就会看到同一份花费和账本。</div>
 
-    <div class="grid">
-      <!-- 花费记录 -->
-      <section class="card">
-        <h2>花费记录</h2>
+      <div class="auth-field">
+        <label for="authEmail">邮箱</label>
+        <input id="authEmail" type="email" autocomplete="email" placeholder="name@example.com" />
+      </div>
+      <div class="auth-field">
+        <label for="authPassword">密码</label>
+        <input id="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 位" />
+      </div>
 
-        <div class="row">
-          <div>
-            <label for="expenseName">名称</label>
-            <input id="expenseName" placeholder="例如：午饭" />
-          </div>
-          <div>
-            <label for="expenseAmount">金额</label>
-            <input id="expenseAmount" type="number" step="0.01" min="0" placeholder="例如：25.50" />
-          </div>
-          <button class="primary" id="addExpenseBtn">添加记录</button>
-        </div>
+      <div class="auth-actions">
+        <button class="primary" id="loginBtn">登录</button>
+        <button class="secondary" id="signupBtn">注册</button>
+      </div>
 
-        <div class="hint">添加时会自动记录当天日期。花费记录与账本互不影响。</div>
-
-        <div class="section">
-          <div class="row two">
-            <div>
-              <label for="startDate">开始日期</label>
-              <input id="startDate" type="date" />
-            </div>
-            <div>
-              <label for="endDate">结束日期</label>
-              <input id="endDate" type="date" />
-            </div>
-          </div>
-
-          <div class="summary">
-            <span>所选日期总金额</span>
-            <strong id="expenseTotal">¥0.00</strong>
-          </div>
-
-          <div class="list" id="expenseList"></div>
-        </div>
-      </section>
-
-      <!-- 账本 -->
-      <section class="card">
-        <h2>账本</h2>
-
-        <div class="row">
-          <div>
-            <label for="ledgerName">账本名称</label>
-            <input id="ledgerName" placeholder="例如：支付宝" />
-          </div>
-          <div>
-            <label for="ledgerBalance">余额</label>
-            <input id="ledgerBalance" type="number" step="0.01" placeholder="例如：3200.00" />
-          </div>
-          <button class="primary" id="addLedgerBtn">添加账本</button>
-        </div>
-
-        <div class="hint">账本只记录名称和当前余额，不会和上面的花费记录联动。</div>
-
-        <div class="section">
-          <div class="list" id="ledgerList"></div>
-          <div class="ledger-total" id="ledgerCount">共 0 个账本</div>
-        </div>
-      </section>
+      <div id="authMsg" class="msg hidden"></div>
     </div>
   </div>
 
-<script>
-  const EXPENSE_KEY = "simple_bookkeeping_expenses_v1";
-  const LEDGER_KEY = "simple_bookkeeping_ledgers_v1";
-
-  let expenses = JSON.parse(localStorage.getItem(EXPENSE_KEY) || "[]");
-  let ledgers = JSON.parse(localStorage.getItem(LEDGER_KEY) || "[]");
-
-  const $ = (id) => document.getElementById(id);
-
-  function saveExpenses() {
-    localStorage.setItem(EXPENSE_KEY, JSON.stringify(expenses));
-  }
-
-  function saveLedgers() {
-    localStorage.setItem(LEDGER_KEY, JSON.stringify(ledgers));
-  }
-
-  function todayString() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,"0");
-    const day = String(d.getDate()).padStart(2,"0");
-    return `${y}-${m}-${day}`;
-  }
-
-  function money(v) {
-    return "¥" + Number(v || 0).toFixed(2);
-  }
-
-  function renderExpenses() {
-    const list = $("expenseList");
-    const start = $("startDate").value;
-    const end = $("endDate").value;
-
-    const filtered = expenses
-      .filter(e => (!start || e.date >= start) && (!end || e.date <= end))
-      .sort((a,b) => (b.date + b.createdAt).localeCompare(a.date + a.createdAt));
-
-    const total = filtered.reduce((sum, e) => sum + Number(e.amount), 0);
-    $("expenseTotal").textContent = money(total);
-
-    if (!filtered.length) {
-      list.innerHTML = '<div class="empty">当前日期范围内暂无记录</div>';
-      return;
-    }
-
-    list.innerHTML = filtered.map(e => `
-      <div class="item">
-        <div class="meta">
-          <div class="name">${escapeHtml(e.name)}</div>
-          <div class="sub">${e.date}</div>
+  <div id="appView" class="hidden">
+    <div class="wrap">
+      <div class="topbar">
+        <h1>简易记账</h1>
+        <div class="status-wrap">
+          <div class="status"><span id="syncDot" class="dot"></span><span id="syncText">准备同步</span></div>
+          <button class="plain" id="logoutBtn">退出登录</button>
         </div>
-        <div class="amount">${money(e.amount)}</div>
-        <button class="danger" onclick="deleteExpense('${e.id}')">删除</button>
       </div>
-    `).join("");
-  }
+    </div>
 
-  function renderLedgers() {
-    const list = $("ledgerList");
-    $("ledgerCount").textContent = `共 ${ledgers.length} 个账本`;
+    <div id="migrateBox" class="migrate hidden">
+      <div class="migrate-text" id="migrateText"></div>
+      <div class="migrate-actions">
+        <button class="primary" id="migrateBtn">导入云端</button>
+        <button class="plain" id="dismissMigrateBtn">暂不导入</button>
+      </div>
+    </div>
 
-    if (!ledgers.length) {
-      list.innerHTML = '<div class="empty">暂无账本</div>';
-      return;
+    <div class="wrap" style="padding-top:0">
+      <div class="grid">
+        <section class="card">
+          <div class="card-header">
+            <h2>花费记录</h2>
+            <button class="secondary" id="toggleQueryBtn">查询历史</button>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="expenseName">名称</label>
+              <input id="expenseName" placeholder="例如：午饭" />
+            </div>
+            <div>
+              <label for="expenseAmount">金额</label>
+              <input id="expenseAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="例如：25.50" />
+            </div>
+            <div>
+              <label for="expenseDate">日期</label>
+              <input id="expenseDate" type="date" />
+            </div>
+            <button class="primary" id="addExpenseBtn">添加记录</button>
+          </div>
+
+          <div class="section">
+            <div class="section-title">今天的花费</div>
+            <div class="summary">
+              <span>今日总金额</span>
+              <strong id="todayTotal">¥0.00</strong>
+            </div>
+            <div class="list" id="todayExpenseList"></div>
+          </div>
+
+          <div class="panel" id="queryPanel">
+            <div class="section-title">历史查询</div>
+            <div class="row two">
+              <div>
+                <label for="startDate">开始日期</label>
+                <input id="startDate" type="date" />
+              </div>
+              <div>
+                <label for="endDate">结束日期</label>
+                <input id="endDate" type="date" />
+              </div>
+            </div>
+            <div class="summary">
+              <span>查询范围总金额</span>
+              <strong id="queryTotal">¥0.00</strong>
+            </div>
+            <div class="list" id="queryExpenseList"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2>账本</h2>
+            <button class="primary" id="toggleLedgerBtn">添加账本</button>
+          </div>
+
+          <div class="panel" id="ledgerAddPanel">
+            <div class="section-title">添加新账本</div>
+            <div class="row ledger">
+              <div>
+                <label for="ledgerName">账本名称</label>
+                <input id="ledgerName" placeholder="例如：支付宝" />
+              </div>
+              <div>
+                <label for="ledgerBalance">余额</label>
+                <input id="ledgerBalance" type="number" inputmode="decimal" step="0.01" placeholder="例如：3200.00" />
+              </div>
+              <button class="primary" id="addLedgerBtn">确认添加</button>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">现有账本</div>
+            <div class="list" id="ledgerList"></div>
+            <div class="ledger-count" id="ledgerCount">共 0 个账本</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://rbfebfujpkrlyhhufbzj.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_K0lO4ThgpvODWvSjuGNIng_c-_2fKQz';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const OLD_EXPENSE_KEY = "simple_bookkeeping_expenses_v1";
+    const OLD_LEDGER_KEY = "simple_bookkeeping_ledgers_v1";
+
+    let currentUser = null;
+    let expenses = [];
+    let ledgers = [];
+    let syncTimer = null;
+
+    const $ = id => document.getElementById(id);
+
+    function localDateString(date = new Date()) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
     }
 
-    list.innerHTML = ledgers.map(l => `
-      <div class="item">
-        <div class="meta">
-          <div class="name">${escapeHtml(l.name)}</div>
+    function money(value) {
+      return "¥" + Number(value || 0).toFixed(2);
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function toast(text) {
+      const el = $("toast");
+      el.textContent = text;
+      el.classList.add("show");
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove("show"), 1800);
+    }
+
+    function setSyncStatus(type, text) {
+      $("syncText").textContent = text;
+      $("syncDot").className = "dot " + (type || "");
+    }
+
+    function showAuthMessage(text, ok=false) {
+      const el = $("authMsg");
+      el.textContent = text;
+      el.className = "msg " + (ok ? "ok" : "err");
+    }
+
+    function clearAuthMessage() {
+      $("authMsg").className = "msg hidden";
+      $("authMsg").textContent = "";
+    }
+
+    function showAuth() {
+      $("authView").classList.remove("hidden");
+      $("appView").classList.add("hidden");
+      $("migrateBox").classList.add("hidden");
+      currentUser = null;
+      expenses = [];
+      ledgers = [];
+      if (syncTimer) {
+        clearInterval(syncTimer);
+        syncTimer = null;
+      }
+    }
+
+    async function showApp(user) {
+      currentUser = user;
+      $("authView").classList.add("hidden");
+      $("appView").classList.remove("hidden");
+      $("expenseDate").value = localDateString();
+
+      const now = new Date();
+      $("startDate").value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
+      $("endDate").value = localDateString();
+
+      await refreshAll();
+      checkLocalMigration();
+
+      if (syncTimer) clearInterval(syncTimer);
+      syncTimer = setInterval(() => {
+        if (!document.hidden) refreshAll(true);
+      }, 15000);
+    }
+
+    async function refreshAll(silent=false) {
+      if (!currentUser) return;
+      if (!silent) setSyncStatus("busy", "同步中…");
+
+      const [eRes, lRes] = await Promise.all([
+        sb.from("expenses")
+          .select("id,name,amount,expense_date,created_at")
+          .order("expense_date", { ascending:false })
+          .order("created_at", { ascending:false }),
+        sb.from("ledgers")
+          .select("id,name,balance,created_at")
+          .order("created_at", { ascending:true })
+      ]);
+
+      if (eRes.error || lRes.error) {
+        console.error(eRes.error || lRes.error);
+        setSyncStatus("", "同步失败");
+        if (!silent) toast("同步失败，请检查网络或数据库权限");
+        return;
+      }
+
+      expenses = eRes.data || [];
+      ledgers = lRes.data || [];
+      renderTodayExpenses();
+      renderLedgers();
+      if ($("queryPanel").classList.contains("open")) renderQueryExpenses();
+      setSyncStatus("ok", "已同步");
+    }
+
+    function renderTodayExpenses() {
+      const today = localDateString();
+      const items = expenses.filter(e => e.expense_date === today);
+      $("todayTotal").textContent = money(items.reduce((s,e) => s + Number(e.amount), 0));
+
+      $("todayExpenseList").innerHTML = items.length ? items.map(e => `
+        <div class="item">
+          <div class="meta">
+            <div class="name">${escapeHtml(e.name)}</div>
+            <div class="sub">${e.expense_date}</div>
+          </div>
+          <div class="amount">${money(e.amount)}</div>
+          <button class="danger" onclick="deleteExpense('${e.id}')">删除</button>
         </div>
-        <div class="amount">${money(l.balance)}</div>
-        <button class="danger" onclick="deleteLedger('${l.id}')">删除</button>
-      </div>
-    `).join("");
-  }
-
-  function escapeHtml(text) {
-    return String(text)
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-  }
-
-  $("addExpenseBtn").addEventListener("click", () => {
-    const name = $("expenseName").value.trim();
-    const amountText = $("expenseAmount").value.trim();
-    const amount = Number(amountText);
-
-    if (!name) {
-      alert("请输入花费名称");
-      return;
-    }
-    if (amountText === "" || !Number.isFinite(amount) || amount < 0) {
-      alert("请输入正确的金额");
-      return;
+      `).join("") : '<div class="empty">今天还没有花费记录</div>';
     }
 
-    expenses.push({
-      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(),
-      name,
-      amount,
-      date: todayString(),
-      createdAt: new Date().toISOString()
+    function renderQueryExpenses() {
+      const start = $("startDate").value;
+      const end = $("endDate").value;
+      const items = expenses.filter(e =>
+        (!start || e.expense_date >= start) &&
+        (!end || e.expense_date <= end)
+      );
+      $("queryTotal").textContent = money(items.reduce((s,e) => s + Number(e.amount), 0));
+
+      $("queryExpenseList").innerHTML = items.length ? items.map(e => `
+        <div class="item">
+          <div class="meta">
+            <div class="name">${escapeHtml(e.name)}</div>
+            <div class="sub">${e.expense_date}</div>
+          </div>
+          <div class="amount">${money(e.amount)}</div>
+          <button class="danger" onclick="deleteExpense('${e.id}')">删除</button>
+        </div>
+      `).join("") : '<div class="empty">该日期范围内暂无记录</div>';
+    }
+
+    function renderLedgers() {
+      $("ledgerCount").textContent = `共 ${ledgers.length} 个账本`;
+      $("ledgerList").innerHTML = ledgers.length ? ledgers.map(l => `
+        <div class="item">
+          <div class="meta">
+            <div class="name">${escapeHtml(l.name)}</div>
+          </div>
+          <div class="amount">${money(l.balance)}</div>
+          <button class="danger" onclick="deleteLedger('${l.id}')">删除</button>
+        </div>
+      `).join("") : '<div class="empty">暂无账本</div>';
+    }
+
+    async function addExpense() {
+      const name = $("expenseName").value.trim();
+      const amountText = $("expenseAmount").value.trim();
+      const amount = Number(amountText);
+      const date = $("expenseDate").value;
+
+      if (!name) return toast("请输入花费名称");
+      if (amountText === "" || !Number.isFinite(amount) || amount < 0) return toast("请输入正确的金额");
+      if (!date) return toast("请选择日期");
+
+      setSyncStatus("busy", "保存中…");
+      const { error } = await sb.from("expenses").insert({
+        user_id: currentUser.id,
+        name,
+        amount,
+        expense_date: date
+      });
+
+      if (error) {
+        console.error(error);
+        setSyncStatus("", "保存失败");
+        return toast("保存失败：" + error.message);
+      }
+
+      $("expenseName").value = "";
+      $("expenseAmount").value = "";
+      $("expenseDate").value = localDateString();
+      await refreshAll(true);
+      setSyncStatus("ok", "已同步");
+      toast("已保存");
+    }
+
+    async function addLedger() {
+      const name = $("ledgerName").value.trim();
+      const balanceText = $("ledgerBalance").value.trim();
+      const balance = Number(balanceText);
+
+      if (!name) return toast("请输入账本名称");
+      if (balanceText === "" || !Number.isFinite(balance)) return toast("请输入正确的余额");
+
+      setSyncStatus("busy", "保存中…");
+      const { error } = await sb.from("ledgers").insert({
+        user_id: currentUser.id,
+        name,
+        balance
+      });
+
+      if (error) {
+        console.error(error);
+        setSyncStatus("", "保存失败");
+        return toast("保存失败：" + error.message);
+      }
+
+      $("ledgerName").value = "";
+      $("ledgerBalance").value = "";
+      $("ledgerAddPanel").classList.remove("open");
+      $("toggleLedgerBtn").textContent = "添加账本";
+      await refreshAll(true);
+      setSyncStatus("ok", "已同步");
+      toast("账本已添加");
+    }
+
+    window.deleteExpense = async function(id) {
+      if (!confirm("确定删除这条花费记录吗？")) return;
+      const { error } = await sb.from("expenses").delete().eq("id", id);
+      if (error) return toast("删除失败");
+      await refreshAll(true);
+      toast("已删除");
+    };
+
+    window.deleteLedger = async function(id) {
+      if (!confirm("确定删除这个账本吗？")) return;
+      const { error } = await sb.from("ledgers").delete().eq("id", id);
+      if (error) return toast("删除失败");
+      await refreshAll(true);
+      toast("已删除");
+    };
+
+    function getOldLocalData() {
+      let oldExpenses = [];
+      let oldLedgers = [];
+      try { oldExpenses = JSON.parse(localStorage.getItem(OLD_EXPENSE_KEY) || "[]"); } catch {}
+      try { oldLedgers = JSON.parse(localStorage.getItem(OLD_LEDGER_KEY) || "[]"); } catch {}
+      return {
+        expenses: Array.isArray(oldExpenses) ? oldExpenses : [],
+        ledgers: Array.isArray(oldLedgers) ? oldLedgers : []
+      };
+    }
+
+    function checkLocalMigration() {
+      if (!currentUser) return;
+      const marker = localStorage.getItem("cloud_migrated_" + currentUser.id);
+      const old = getOldLocalData();
+      if (!marker && (old.expenses.length || old.ledgers.length)) {
+        $("migrateText").textContent =
+          `检测到这台设备旧版数据：${old.expenses.length} 条花费、${old.ledgers.length} 个账本。可以一次性导入云端。`;
+        $("migrateBox").classList.remove("hidden");
+      } else {
+        $("migrateBox").classList.add("hidden");
+      }
+    }
+
+    async function migrateLocalData() {
+      const old = getOldLocalData();
+      if (!old.expenses.length && !old.ledgers.length) return;
+
+      $("migrateBtn").disabled = true;
+      $("migrateBtn").textContent = "导入中…";
+
+      const expenseRows = old.expenses.map(e => ({
+        user_id: currentUser.id,
+        name: String(e.name || "未命名"),
+        amount: Number(e.amount || 0),
+        expense_date: e.date || localDateString()
+      }));
+
+      const ledgerRows = old.ledgers.map(l => ({
+        user_id: currentUser.id,
+        name: String(l.name || "未命名账本"),
+        balance: Number(l.balance || 0)
+      }));
+
+      let err = null;
+      if (expenseRows.length) {
+        const r = await sb.from("expenses").insert(expenseRows);
+        if (r.error) err = r.error;
+      }
+      if (!err && ledgerRows.length) {
+        const r = await sb.from("ledgers").insert(ledgerRows);
+        if (r.error) err = r.error;
+      }
+
+      $("migrateBtn").disabled = false;
+      $("migrateBtn").textContent = "导入云端";
+
+      if (err) {
+        console.error(err);
+        return toast("旧数据导入失败：" + err.message);
+      }
+
+      localStorage.setItem("cloud_migrated_" + currentUser.id, "1");
+      $("migrateBox").classList.add("hidden");
+      await refreshAll(true);
+      toast("旧数据已导入云端");
+    }
+
+    $("loginBtn").addEventListener("click", async () => {
+      clearAuthMessage();
+      const email = $("authEmail").value.trim();
+      const password = $("authPassword").value;
+      if (!email || !password) return showAuthMessage("请输入邮箱和密码");
+
+      $("loginBtn").disabled = true;
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      $("loginBtn").disabled = false;
+
+      if (error) return showAuthMessage(error.message);
+      await showApp(data.user);
     });
 
-    saveExpenses();
-    $("expenseName").value = "";
-    $("expenseAmount").value = "";
-    $("expenseName").focus();
-    renderExpenses();
-  });
+    $("signupBtn").addEventListener("click", async () => {
+      clearAuthMessage();
+      const email = $("authEmail").value.trim();
+      const password = $("authPassword").value;
+      if (!email || password.length < 6) return showAuthMessage("请输入正确邮箱，密码至少 6 位");
 
-  $("addLedgerBtn").addEventListener("click", () => {
-    const name = $("ledgerName").value.trim();
-    const balanceText = $("ledgerBalance").value.trim();
-    const balance = Number(balanceText);
+      $("signupBtn").disabled = true;
+      const { data, error } = await sb.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: "https://iason-r.github.io/jizhang/"
+        }
+      });
+      $("signupBtn").disabled = false;
 
-    if (!name) {
-      alert("请输入账本名称");
-      return;
-    }
-    if (balanceText === "" || !Number.isFinite(balance)) {
-      alert("请输入正确的余额");
-      return;
-    }
-
-    ledgers.push({
-      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(),
-      name,
-      balance
+      if (error) return showAuthMessage(error.message);
+      if (data.session) {
+        await showApp(data.user);
+      } else {
+        showAuthMessage("注册成功。请到邮箱点击确认链接，然后回来登录。", true);
+      }
     });
 
-    saveLedgers();
-    $("ledgerName").value = "";
-    $("ledgerBalance").value = "";
-    $("ledgerName").focus();
-    renderLedgers();
-  });
+    $("logoutBtn").addEventListener("click", async () => {
+      await sb.auth.signOut();
+      showAuth();
+    });
 
-  window.deleteExpense = function(id) {
-    if (!confirm("确定删除这条花费记录吗？")) return;
-    expenses = expenses.filter(e => e.id !== id);
-    saveExpenses();
-    renderExpenses();
-  };
+    $("addExpenseBtn").addEventListener("click", addExpense);
+    $("addLedgerBtn").addEventListener("click", addLedger);
 
-  window.deleteLedger = function(id) {
-    if (!confirm("确定删除这个账本吗？")) return;
-    ledgers = ledgers.filter(l => l.id !== id);
-    saveLedgers();
-    renderLedgers();
-  };
+    $("toggleQueryBtn").addEventListener("click", () => {
+      const panel = $("queryPanel");
+      const open = panel.classList.toggle("open");
+      $("toggleQueryBtn").textContent = open ? "收起查询" : "查询历史";
+      if (open) renderQueryExpenses();
+    });
 
-  $("startDate").addEventListener("change", renderExpenses);
-  $("endDate").addEventListener("change", renderExpenses);
+    $("toggleLedgerBtn").addEventListener("click", () => {
+      const panel = $("ledgerAddPanel");
+      const open = panel.classList.toggle("open");
+      $("toggleLedgerBtn").textContent = open ? "收起" : "添加账本";
+      if (open) $("ledgerName").focus();
+    });
 
-  $("expenseAmount").addEventListener("keydown", e => {
-    if (e.key === "Enter") $("addExpenseBtn").click();
-  });
-  $("ledgerBalance").addEventListener("keydown", e => {
-    if (e.key === "Enter") $("addLedgerBtn").click();
-  });
+    $("startDate").addEventListener("change", renderQueryExpenses);
+    $("endDate").addEventListener("change", renderQueryExpenses);
+    $("migrateBtn").addEventListener("click", migrateLocalData);
+    $("dismissMigrateBtn").addEventListener("click", () => $("migrateBox").classList.add("hidden"));
 
-  // 默认日期范围：本月1日至今天
-  const now = new Date();
-  const firstDay = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
-  $("startDate").value = firstDay;
-  $("endDate").value = todayString();
+    $("expenseAmount").addEventListener("keydown", e => {
+      if (e.key === "Enter") addExpense();
+    });
+    $("ledgerBalance").addEventListener("keydown", e => {
+      if (e.key === "Enter") addLedger();
+    });
+    $("authPassword").addEventListener("keydown", e => {
+      if (e.key === "Enter") $("loginBtn").click();
+    });
 
-  renderExpenses();
-  renderLedgers();
-</script>
+    window.addEventListener("focus", () => {
+      if (currentUser) refreshAll(true);
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && currentUser) refreshAll(true);
+    });
+
+    sb.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        if (!currentUser || currentUser.id !== session.user.id) await showApp(session.user);
+      } else if (event === "SIGNED_OUT") {
+        showAuth();
+      }
+    });
+
+    (async () => {
+      const { data } = await sb.auth.getSession();
+      if (data.session?.user) {
+        await showApp(data.session.user);
+      } else {
+        showAuth();
+      }
+    })();
+  </script>
 </body>
 </html>
