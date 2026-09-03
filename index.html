@@ -499,6 +499,7 @@
     let editingLedgerId = null;
     let editLedgerSign = 1;
     let syncTimer = null;
+    let lastKnownToday = localDateString();
 
     const $ = id => document.getElementById(id);
 
@@ -507,6 +508,19 @@
       const m = String(date.getMonth() + 1).padStart(2, "0");
       const d = String(date.getDate()).padStart(2, "0");
       return `${y}-${m}-${d}`;
+    }
+
+    function refreshDefaultExpenseDate(force = false) {
+      const today = localDateString();
+      const input = $("expenseDate");
+
+      // 首次打开时使用当天日期；
+      // 如果跨天且输入框仍是之前的默认日期，则自动切换到今天。
+      if (input && (force || !input.value || input.value === lastKnownToday)) {
+        input.value = today;
+      }
+
+      lastKnownToday = today;
     }
 
     function money(value) {
@@ -564,7 +578,7 @@
       currentUser = user;
       $("authView").classList.add("hidden");
       $("appView").classList.remove("hidden");
-      $("expenseDate").value = localDateString();
+      refreshDefaultExpenseDate(true);
 
       const now = new Date();
       $("startDate").value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
@@ -575,7 +589,10 @@
 
       if (syncTimer) clearInterval(syncTimer);
       syncTimer = setInterval(() => {
-        if (!document.hidden) refreshAll(true);
+        if (!document.hidden) {
+          refreshDefaultExpenseDate(false);
+          refreshAll(true);
+        }
       }, 15000);
     }
 
@@ -971,10 +988,25 @@
     });
 
     window.addEventListener("focus", () => {
-      if (currentUser) refreshAll(true);
+      if (currentUser) {
+        refreshDefaultExpenseDate(false);
+        refreshAll(true);
+      }
     });
+
     document.addEventListener("visibilitychange", () => {
-      if (!document.hidden && currentUser) refreshAll(true);
+      if (!document.hidden && currentUser) {
+        refreshDefaultExpenseDate(false);
+        refreshAll(true);
+      }
+    });
+
+    // iPhone 从主屏幕重新进入网页 App 时也检查日期
+    window.addEventListener("pageshow", () => {
+      if (currentUser) {
+        refreshDefaultExpenseDate(false);
+        refreshAll(true);
+      }
     });
 
     sb.auth.onAuthStateChange(async (event, session) => {
