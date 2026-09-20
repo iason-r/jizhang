@@ -255,17 +255,23 @@
       min-height:34px;
       padding:0 11px;
     }
-    .move-btn {
-      background:#fff;
-      color:var(--text);
-      border:1px solid var(--line);
-      min-height:34px;
-      min-width:36px;
-      padding:0 9px;
+    .ledger-sort-item {
+      user-select:none;
+      -webkit-user-select:none;
+      transition:transform .15s ease, box-shadow .15s ease, opacity .15s ease;
     }
-    button:disabled {
-      opacity:.35;
-      cursor:default;
+    .ledger-sort-item.sorting {
+      transform:scale(1.015);
+      box-shadow:0 10px 26px rgba(0,0,0,.12);
+      opacity:.92;
+      z-index:5;
+      position:relative;
+    }
+    .ledger-sort-hint {
+      font-size:12px;
+      color:var(--muted);
+      font-weight:400;
+      margin-left:6px;
     }
     .edit-panel {
       margin-top:12px;
@@ -511,6 +517,8 @@
     let editingLedgerId = null;
     let editLedgerSign = 1;
     let ledgerOrderBusy = false;
+    let ledgerSortState = null;
+    let ledgerSortTimer = null;
     let syncTimer = null;
     let lastKnownToday = localDateString();
 
@@ -611,6 +619,7 @@
 
     async function refreshAll(silent=false) {
       if (!currentUser) return;
+      if (ledgerSortState?.active) return;
       if (!silent) setSyncStatus("busy", "同步中…");
 
       const [eRes, lRes] = await Promise.all([
@@ -682,25 +691,13 @@
       $("ledgerTotal").textContent = money(total);
       $("ledgerCount").textContent = `共 ${ledgers.length} 个账本`;
 
-      $("ledgerList").innerHTML = ledgers.length ? ledgers.map((l, index) => `
-        <div class="item">
+      $("ledgerList").innerHTML = ledgers.length ? ledgers.map(l => `
+        <div class="item ledger-sort-item" data-ledger-id="${l.id}">
           <div class="meta">
             <div class="name">${escapeHtml(l.name)}</div>
           </div>
           <div class="amount">${money(l.balance)}</div>
           <div class="item-actions">
-            <button
-              class="move-btn"
-              onclick="moveLedger(${index}, -1)"
-              ${index === 0 ? "disabled" : ""}
-              aria-label="上移账本"
-              title="上移">↑</button>
-            <button
-              class="move-btn"
-              onclick="moveLedger(${index}, 1)"
-              ${index === ledgers.length - 1 ? "disabled" : ""}
-              aria-label="下移账本"
-              title="下移">↓</button>
             <button class="edit-btn" onclick="openLedgerEdit('${l.id}')">修改</button>
             <button class="danger" onclick="deleteLedger('${l.id}')">删除</button>
           </div>
@@ -708,47 +705,177 @@
       `).join("") : '<div class="empty">暂无账本</div>';
     }
 
-    window.moveLedger = async function(index, direction) {
-      if (ledgerOrderBusy) return;
+    function clearLedgerSortTimer() {
+      if (ledgerSortTimer) {
+        clearTimeout(ledgerSortTimer);
+        ledgerSortTimer = null;
+      }
+    }
 
-      const targetIndex = index + direction;
-      if (index < 0 || index >= ledgers.length) return;
-      if (targetIndex < 0 || targetIndex >= ledgers.length) return;
+    function beginLedgerSort(row, clientX, clientY, pointerType) {
+      if (ledgerOrderBusy || !row) return;
 
-      const current = ledgers[index];
-      const target = ledgers[targetIndex];
+      clearLedgerSortTimer();
+      ledgerSortState = {
+        id: row.dataset.ledgerId,
+        row,
+        startX: clientX,
+        startY: clientY,
+        active: false,
+        pointerType
+      };
 
-      const currentOrderNumber = Number(current.sort_order);
-      const targetOrderNumber = Number(target.sort_order);
-      const currentOrder = Number.isFinite(currentOrderNumber) ? currentOrderNumber : index;
-      const targetOrder = Number.isFinite(targetOrderNumber) ? targetOrderNumber : targetIndex;
+      ledgerSortTimer = setTimeout(() => {
+        if (!ledgerSortState || ledgerSortState.row !== row) return;
+        ledgerSortState.active = true;
+        row.classList.add("sorting");
+        setSyncStatus("busy", "拖动调整顺序…");
+        if (navigator.vibrate) navigator.vibrate(20);
+      }, 450);
+    }
 
+    function cancelLedgerSortBeforeActivation() {
+      clearLedgerSortTimer();
+      if (ledgerSortState && !ledgerSortState.active) {
+        ledgerSortState = null;
+      }
+    }
+
+    function moveLedgerSort(clientX, clientY) {
+      if (!ledgerSortState) return false;
+
+      if (!ledgerSortState.active) {
+        const dx = Math.abs(clientX - ledgerSortState.startX);
+        const dy = Math.abs(clientY - ledgerSortState.startY);
+        if (dx > 10 || dy > 10) cancelLedgerSortBeforeActivation();
+        return false;
+      }
+
+      const draggedId = ledgerSortState.id;
+      const draggedEl = ledgerSortState.row;
+      if (!draggedEl?.isConnected) return true;
+
+      const hit = document.elementFromPoint(clientX, clientY);
+      const targetEl = hit?.closest?.(".ledger-sort-item");
+      if (!targetEl || targetEl === draggedEl) return true;
+
+      const targetId = targetEl.dataset.ledgerId;
+      const fromIndex = ledgers.findIndex(l => String(l.id) === String(draggedId));
+      const targetIndex = ledgers.findIndex(l => String(l.id) === String(targetId));
+      if (fromIndex < 0 || targetIndex < 0 || fromIndex === targetIndex) return true;
+
+      const [moved] = ledgers.splice(fromIndex, 1);
+      ledgers.splice(targetIndex, 0, moved);
+
+      if (fromIndex < targetIndex) {
+        targetEl.after(draggedEl);
+      } else {
+        targetEl.before(draggedEl);
+      }
+
+      return true;
+    }
+
+    async function finishLedgerSort() {
+      clearLedgerSortTimer();
+
+      if (!ledgerSortState) return;
+      const wasActive = ledgerSortState.active;
+      const row = ledgerSortState.row;
+      ledgerSortState = null;
+
+      if (!wasActive) return;
+
+      row?.classList.remove("sorting");
       ledgerOrderBusy = true;
-      setSyncStatus("busy", "调整顺序中…");
+      setSyncStatus("busy", "保存顺序中…");
 
-      const [r1, r2] = await Promise.all([
-        sb.from("ledgers")
-          .update({ sort_order: targetOrder })
-          .eq("id", current.id),
-        sb.from("ledgers")
-          .update({ sort_order: currentOrder })
-          .eq("id", target.id)
-      ]);
+      const results = await Promise.all(
+        ledgers.map((ledger, index) =>
+          sb.from("ledgers")
+            .update({ sort_order: index })
+            .eq("id", ledger.id)
+        )
+      );
 
-      if (r1.error || r2.error) {
-        console.error(r1.error || r2.error);
-        ledgerOrderBusy = false;
-        setSyncStatus("", "调整失败");
-        toast("调整账本顺序失败");
+      const failed = results.find(r => r.error);
+      ledgerOrderBusy = false;
+
+      if (failed) {
+        console.error(failed.error);
+        setSyncStatus("", "排序保存失败");
+        toast("排序保存失败");
         await refreshAll(true);
         return;
       }
 
-      await refreshAll(true);
-      ledgerOrderBusy = false;
+      ledgers.forEach((ledger, index) => {
+        ledger.sort_order = index;
+      });
+
       setSyncStatus("ok", "已同步");
-      toast(direction < 0 ? "账本已上移" : "账本已下移");
-    };
+      toast("账本顺序已保存");
+    }
+
+    function setupLedgerLongPressSort() {
+      const list = $("ledgerList");
+
+      // iPhone / Android：长按约 0.45 秒后，上下拖动。
+      list.addEventListener("touchstart", e => {
+        if (e.touches.length !== 1) return;
+        if (e.target.closest("button")) return;
+
+        const row = e.target.closest(".ledger-sort-item");
+        if (!row) return;
+
+        const touch = e.touches[0];
+        beginLedgerSort(row, touch.clientX, touch.clientY, "touch");
+      }, { passive:true });
+
+      list.addEventListener("touchmove", e => {
+        if (!ledgerSortState || ledgerSortState.pointerType !== "touch") return;
+        if (e.touches.length !== 1) return;
+
+        const touch = e.touches[0];
+        const active = moveLedgerSort(touch.clientX, touch.clientY);
+        if (active) e.preventDefault();
+      }, { passive:false });
+
+      list.addEventListener("touchend", () => {
+        if (ledgerSortState?.pointerType === "touch") finishLedgerSort();
+      });
+
+      list.addEventListener("touchcancel", () => {
+        if (ledgerSortState?.pointerType === "touch") finishLedgerSort();
+      });
+
+      // 电脑：按住鼠标约 0.45 秒后拖动，行为与手机一致。
+      list.addEventListener("mousedown", e => {
+        if (e.button !== 0) return;
+        if (e.target.closest("button")) return;
+
+        const row = e.target.closest(".ledger-sort-item");
+        if (!row) return;
+
+        beginLedgerSort(row, e.clientX, e.clientY, "mouse");
+      });
+
+      document.addEventListener("mousemove", e => {
+        if (!ledgerSortState || ledgerSortState.pointerType !== "mouse") return;
+        const active = moveLedgerSort(e.clientX, e.clientY);
+        if (active) e.preventDefault();
+      });
+
+      document.addEventListener("mouseup", () => {
+        if (ledgerSortState?.pointerType === "mouse") finishLedgerSort();
+      });
+
+      list.addEventListener("contextmenu", e => {
+        if (e.target.closest(".ledger-sort-item") && !e.target.closest("button")) {
+          e.preventDefault();
+        }
+      });
+    }
 
     async function addExpense() {
       const name = $("expenseName").value.trim();
@@ -1020,6 +1147,7 @@
 
     $("addExpenseBtn").addEventListener("click", addExpense);
     $("addLedgerBtn").addEventListener("click", addLedger);
+    setupLedgerLongPressSort();
 
     $("ledgerSignBtn").addEventListener("click", () => {
       ledgerSign *= -1;
