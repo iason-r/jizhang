@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta name="theme-color" content="#f6f7fb" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -258,6 +261,7 @@
     .ledger-sort-item {
       user-select:none;
       -webkit-user-select:none;
+      -webkit-touch-callout:none;
       transition:transform .15s ease, box-shadow .15s ease, opacity .15s ease;
     }
     .ledger-sort-item.sorting {
@@ -490,7 +494,7 @@
           </div>
 
           <div class="section">
-            <div class="section-title">现有账本</div>
+            <div class="section-title">现有账本 <span class="ledger-sort-hint">长按拖动可排序</span></div>
             <div class="list" id="ledgerList"></div>
             <div class="ledger-count" id="ledgerCount">共 0 个账本</div>
           </div>
@@ -729,7 +733,9 @@
         if (!ledgerSortState || ledgerSortState.row !== row) return;
         ledgerSortState.active = true;
         row.classList.add("sorting");
+        document.body.style.overflow = "hidden";
         setSyncStatus("busy", "拖动调整顺序…");
+        toast("已进入排序，拖动账本");
         if (navigator.vibrate) navigator.vibrate(20);
       }, 450);
     }
@@ -787,6 +793,7 @@
       if (!wasActive) return;
 
       row?.classList.remove("sorting");
+      document.body.style.overflow = "";
       ledgerOrderBusy = true;
       setSyncStatus("busy", "保存顺序中…");
 
