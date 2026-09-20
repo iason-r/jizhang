@@ -1,154 +1,96 @@
-        if (r.error) err = r.error;
-      }
-
-      $("migrateBtn").disabled = false;
-      $("migrateBtn").textContent = "导入云端";
-
-      if (err) {
-        console.error(err);
-        return toast("旧数据导入失败：" + err.message);
-      }
-
-      localStorage.setItem("cloud_migrated_" + currentUser.id, "1");
-      $("migrateBox").classList.add("hidden");
-      await refreshAll(true);
-      toast("旧数据已导入云端");
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f6f7fb" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>简易记账</title>
+  <style>
+    :root {
+      --bg:#f6f7fb;
+      --card:#fff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --primary:#2563eb;
+      --primary-soft:#eff6ff;
+      --danger:#dc2626;
+      --danger-soft:#fee2e2;
+      --success:#059669;
+      --success-soft:#ecfdf5;
+      --warning:#b45309;
+      --warning-soft:#fffbeb;
+      --shadow:0 8px 24px rgba(0,0,0,.06);
+      --radius:16px;
     }
-
-    $("loginBtn").addEventListener("click", async () => {
-      clearAuthMessage();
-      const email = $("authEmail").value.trim();
-      const password = $("authPassword").value;
-      if (!email || !password) return showAuthMessage("请输入邮箱和密码");
-
-      $("loginBtn").disabled = true;
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
-      $("loginBtn").disabled = false;
-
-      if (error) return showAuthMessage(error.message);
-      await showApp(data.user);
-    });
-
-    $("signupBtn").addEventListener("click", async () => {
-      clearAuthMessage();
-      const email = $("authEmail").value.trim();
-      const password = $("authPassword").value;
-      if (!email || password.length < 6) return showAuthMessage("请输入正确邮箱，密码至少 6 位");
-
-      $("signupBtn").disabled = true;
-      const { data, error } = await sb.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: "https://iason-r.github.io/jizhang/"
-        }
-      });
-      $("signupBtn").disabled = false;
-
-      if (error) return showAuthMessage(error.message);
-      if (data.session) {
-        await showApp(data.user);
-      } else {
-        showAuthMessage("注册成功。请到邮箱点击确认链接，然后回来登录。", true);
-      }
-    });
-
-    $("logoutBtn").addEventListener("click", async () => {
-      await sb.auth.signOut();
-      showAuth();
-    });
-
-    $("addExpenseBtn").addEventListener("click", addExpense);
-    $("addLedgerBtn").addEventListener("click", addLedger);
-
-    $("ledgerSignBtn").addEventListener("click", () => {
-      ledgerSign *= -1;
-      const negative = ledgerSign < 0;
-      $("ledgerSignBtn").textContent = negative ? "负数" : "正数";
-      $("ledgerSignBtn").classList.toggle("negative", negative);
-    });
-
-    $("editLedgerSignBtn").addEventListener("click", () => {
-      editLedgerSign *= -1;
-      const negative = editLedgerSign < 0;
-      $("editLedgerSignBtn").textContent = negative ? "负数" : "正数";
-      $("editLedgerSignBtn").classList.toggle("negative", negative);
-    });
-
-    $("saveLedgerEditBtn").addEventListener("click", saveLedgerEdit);
-    $("cancelLedgerEditBtn").addEventListener("click", closeLedgerEdit);
-
-    $("toggleQueryBtn").addEventListener("click", () => {
-      const panel = $("queryPanel");
-      const open = panel.classList.toggle("open");
-      $("toggleQueryBtn").textContent = open ? "收起查询" : "查询历史";
-      if (open) renderQueryExpenses();
-    });
-
-    $("toggleLedgerBtn").addEventListener("click", () => {
-      if ($("ledgerEditPanel").classList.contains("open")) closeLedgerEdit();
-      const panel = $("ledgerAddPanel");
-      const open = panel.classList.toggle("open");
-      $("toggleLedgerBtn").textContent = open ? "收起" : "添加账本";
-      if (open) $("ledgerName").focus();
-    });
-
-    $("startDate").addEventListener("change", renderQueryExpenses);
-    $("endDate").addEventListener("change", renderQueryExpenses);
-    $("migrateBtn").addEventListener("click", migrateLocalData);
-    $("dismissMigrateBtn").addEventListener("click", () => $("migrateBox").classList.add("hidden"));
-
-    $("expenseAmount").addEventListener("keydown", e => {
-      if (e.key === "Enter") addExpense();
-    });
-    $("ledgerBalance").addEventListener("keydown", e => {
-      if (e.key === "Enter") addLedger();
-    });
-    $("editLedgerBalance").addEventListener("keydown", e => {
-      if (e.key === "Enter") saveLedgerEdit();
-    });
-    $("authPassword").addEventListener("keydown", e => {
-      if (e.key === "Enter") $("loginBtn").click();
-    });
-
-    window.addEventListener("focus", () => {
-      if (currentUser) {
-        refreshDefaultExpenseDate(false);
-        refreshAll(true);
-      }
-    });
-
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden && currentUser) {
-        refreshDefaultExpenseDate(false);
-        refreshAll(true);
-      }
-    });
-
-    // iPhone 从主屏幕重新进入网页 App 时也检查日期
-    window.addEventListener("pageshow", () => {
-      if (currentUser) {
-        refreshDefaultExpenseDate(false);
-        refreshAll(true);
-      }
-    });
-
-    sb.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        if (!currentUser || currentUser.id !== session.user.id) await showApp(session.user);
-      } else if (event === "SIGNED_OUT") {
-        showAuth();
-      }
-    });
-
-    (async () => {
-      const { data } = await sb.auth.getSession();
-      if (data.session?.user) {
-        await showApp(data.session.user);
-      } else {
-        showAuth();
-      }
-    })();
-  </script>
-</body>
-</html>
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      -webkit-tap-highlight-color:transparent;
+    }
+    button,input { font:inherit; }
+    button { cursor:pointer; }
+    .hidden { display:none !important; }
+    .wrap {
+      max-width:1100px;
+      margin:0 auto;
+      padding:18px 14px calc(36px + env(safe-area-inset-bottom));
+    }
+    .topbar {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:16px;
+    }
+    h1 { margin:0; font-size:27px; }
+    .status-wrap {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .status {
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      font-size:13px;
+      color:var(--muted);
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:7px 10px;
+    }
+    .dot {
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background:#9ca3af;
+    }
+    .dot.ok { background:var(--success); }
+    .dot.busy { background:#f59e0b; }
+    .grid {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:18px;
+    }
+    .card {
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:18px;
+    }
+    .card-header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:16px;
+    }
